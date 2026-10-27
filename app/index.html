@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老兵政策助手</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+        }
+
+        header {
+            background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+            color: #fff;
+            padding: 18px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 26px;
+        }
+
+        header p {
+            font-size: 15px;
+            opacity: .85;
+            margin-top: 4px;
+        }
+
+        #chat {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 16px 16px 90px;
+        }
+
+        .msg {
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .msg.user {
+            align-items: flex-end;
+        }
+
+        .bubble {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 18px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .user .bubble {
+            background: #1a73e8;
+            color: #fff;
+            border-top-right-radius: 2px;
+        }
+
+        .bot .bubble {
+            background: #fff;
+            color: #222;
+            border-top-left-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+        }
+
+        .trace {
+            font-size: 14px;
+            color: #7a5c00;
+            background: #fdf6e3;
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            max-width: 85%;
+        }
+
+        .trace::before {
+            content: "🔧 ";
+        }
+
+        #inputbar {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+            background: #fff;
+            border-top: 1px solid #e0e0e0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        #inputbar input {
+            flex: 1;
+            font-size: 18px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        #inputbar button {
+            font-size: 18px;
+            padding: 12px 24px;
+            background: #b91c1c;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #inputbar button:disabled {
+            background: #999;
+        }
+
+        .thinking {
+            color: #666;
+            font-size: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🇨🇳 老兵政策助手</h1>
+        <p>退役政策查询 · 办事流程 · 出行路线</p>
+    </header>
+    <div id="regionbar" style="max-width:760px;margin:0 auto;padding:8px 16px 0;display:flex;gap:8px;align-items:center;font-size:15px;color:#333;">
+        <label for="region">我的地区：</label>
+        <select id="region" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:6px;font-size:15px;">
+            <option value="">全国通用</option>
+            <option value="河北">河北省</option>
+            <option value="北京">北京市</option>
+            <option value="天津">天津市</option>
+            <option value="山西">山西省</option>
+            <option value="河南">河南省</option>
+            <option value="山东">山东省</option>
+            <option value="广东">广东省</option>
+            <option value="江苏">江苏省</option>
+            <option value="浙江">浙江省</option>
+            <option value="湖北">湖北省</option>
+            <option value="湖南">湖南省</option>
+            <option value="四川">四川省</option>
+            <option value="陕西">陕西省</option>
+            <option value="云南">云南省</option>
+            <option value="贵州">贵州省</option>
+            <option value="辽宁">辽宁省</option>
+            <option value="吉林">吉林省</option>
+            <option value="黑龙江">黑龙江省</option>
+            <option value="安徽">安徽省</option>
+            <option value="福建">福建省</option>
+            <option value="江西">江西省</option>
+            <option value="甘肃">甘肃省</option>
+            <option value="青海">青海省</option>
+            <option value="内蒙古">内蒙古</option>
+            <option value="广西">广西</option>
+            <option value="海南">海南省</option>
+            <option value="重庆">重庆市</option>
+            <option value="上海">上海市</option>
+            <option value="新疆">新疆</option>
+            <option value="西藏">西藏</option>
+            <option value="宁夏">宁夏</option>
+        </select>
+        <button onclick="resetConversation()" style="padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;">清除记忆</button>
+    </div>
+    <div id="chat"></div>
+    <div id="inputbar">
+        <input id="q" placeholder="例如：去武装部报到要带什么材料、怎么去？" onkeydown="if(event.key==='Enter')send()">
+        <button id="btn" onclick="send()">发送</button>
+    </div>
+    <script>
+        const chat = document.getElementById('chat');
+
+        // 用户身份：浏览器本地生成并持久化（同一浏览器=同一用户，记忆互相隔离）
+        function getUid() {
+            let uid = localStorage.getItem('lbzz_uid');
+            if (!uid) {
+                uid = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+                localStorage.setItem('lbzz_uid', uid);
+            }
+            return uid;
+        }
+
+        // 地区持久化
+        const regionSel = document.getElementById('region');
+        regionSel.value = localStorage.getItem('lbzz_region') || '';
+
+        function md(t) {
+            return t
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+                .replace(/^### (.*)$/gm, '<h4>$1</h4>')
+                .replace(/^## (.*)$/gm, '<h4>$1</h4>')
+                .replace(/^# (.*)$/gm, '<h4>$1</h4>')
+                .replace(/^- (.*)$/gm, '• $1')
+                .replace(/\n/g, '<br>');
+        }
+
+        function addMsg(role, text) {
+            const div = document.createElement('div');
+            div.className = 'msg ' + role;
+            div.innerHTML = '<div class="bubble">' + md(text) + '</div>';
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+            return div;
+        }
+
+        function addTrace(text) {
+            const div = document.createElement('div');
+            div.className = 'trace';
+            div.textContent = text;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function send() {
+            const q = document.getElementById('q').value.trim();
+            if (!q) return;
+            addMsg('user', q);
+            document.getElementById('q').value = '';
+            const btn = document.getElementById('btn');
+            btn.disabled = true;
+
+            const thinking = addMsg('bot', '思考中，请稍候…');
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: q, user_id: getUid(), region: regionSel.value })
+                });
+                const data = await res.json();
+                thinking.remove();
+                if (data.trace && data.trace.length) {
+                    data.trace.forEach(t => addTrace('调用 ' + t.tool + ' ' + JSON.stringify(t.args)));
+                }
+                addMsg('bot', data.reply || (data.error ? '出错了：' + data.error : '（无回复）'));
+            } catch (e) {
+                thinking.remove();
+                addMsg('bot', '网络错误：' + e.message);
+            }
+            btn.disabled = false;
+        }
+
+        // 清除本会话记忆：换一个新 user_id（旧 thread 留在服务端，下次不再续聊）
+        function resetConversation() {
+            localStorage.removeItem('lbzz_uid');
+            localStorage.setItem('lbzz_region', regionSel.value);
+            addMsg('bot', '已清除本机对话记忆，可开始新会话。');
+        }
+    </script>
+</body>
+
+</html>
